@@ -15,13 +15,20 @@ use crate::unwind::{
 #[derive(Clone)]
 pub struct TaskTrace {
     pub frames: Vec<usize>,
+    pub root_addr: *mut c_void,
+    pub leaf_addr: *mut c_void
 }
-struct CallbackData<'a> {
-    trace: &'a mut TaskTrace,
-    above_leaf: bool,
-    root_addr: *const c_void,
-    leaf_addr: *const c_void,
+
+impl TaskTrace{
+    pub fn new() -> TaskTrace {
+        Self {
+            frames: vec![],
+            root_addr: 0 as *mut c_void,
+            leaf_addr: 0 as *mut c_void,
+        }
+    }
 }
+
 
 
 
@@ -30,48 +37,32 @@ extern "C" fn callback(
     arg: *mut c_void,
 ) -> _Unwind_Reason_Code {
     unsafe {
-        let data = &mut *(arg as *mut CallbackData);
+        let data = &mut *(arg as *mut Vec<usize>);
         let ip = _Unwind_GetIP(ctx);
-        let symbol_addr = _Unwind_FindEnclosingFunction(ip as *mut c_void);
-        let below_root = !ptr::eq(symbol_addr, data.root_addr);
 
-        if data.above_leaf && below_root {
-            data.trace.frames.push(ip);
-        }
+        // do this later
+        // let symbol_addr = _Unwind_FindEnclosingFunction(ip as *mut c_void);
+        // let below_root = !ptr::eq(symbol_addr, data.root_addr);
 
-        if ptr::eq(symbol_addr, data.leaf_addr) {
-            data.above_leaf = true;
-        }
-
-        if below_root {
-            _URC_NO_REASON
-        } else {
-            _URC_FAILURE
-        }
+        data.push(ip);
+        _URC_NO_REASON
     }
 }
 
+pub fn capture_trace(meta: &TraceMeta, trace: &mut TaskTrace) {
+    trace.frames.clear();
 
-pub fn capture_trace(meta: &TraceMeta, task_trace: &mut TaskTrace) {
-    let Some(root_addr) = meta.root_addr else {
-        return
-    };
-
-    let mut data = CallbackData {
-        trace: task_trace,
-        above_leaf: false,
-        root_addr,
-        leaf_addr: meta.trace_leaf_addr,
-    };
+    trace.leaf_addr = meta.trace_leaf_addr as *mut c_void;
+    trace.root_addr = meta.root_addr.unwrap_or(std::ptr::null()) as *mut c_void;
 
     unsafe {
         _Unwind_Backtrace(
             callback,
-            &mut data as *mut CallbackData as *mut c_void,
+            &mut trace.frames as *mut Vec<usize> as *mut c_void,
         );
     }
-
 }
+
 
 #[cfg(test)]
 mod tests {
@@ -99,7 +90,7 @@ mod tests {
             deep_a().await;
         });
 
-        let mut collected = TaskTrace { frames: vec![] };
+        let mut collected = TaskTrace::new();
 
         Trace::root(std::future::poll_fn(|cx| {
             trace_with(
@@ -122,7 +113,7 @@ mod tests {
             tokio::task::yield_now().await;
         });
 
-        let mut collected = TaskTrace { frames: vec![] };
+        let mut collected = TaskTrace::new();
 
         Trace::root(std::future::poll_fn(|cx| {
             trace_with(
@@ -142,7 +133,7 @@ mod tests {
     async fn test_no_yield_no_frames() {
         let mut fut = std::pin::pin!(async { 42 });
 
-        let mut collected = TaskTrace { frames: vec![] };
+        let mut collected = TaskTrace::new();
 
         Trace::root(std::future::poll_fn(|cx| {
             trace_with(
