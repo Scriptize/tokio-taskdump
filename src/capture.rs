@@ -1,4 +1,4 @@
-use core::ffi::c_void;
+use core::{ffi::c_void, task};
 use std::ptr;
 use std::future::Future;
 use std::task::Poll;
@@ -16,8 +16,8 @@ use crate::unwind::{
 pub struct TaskTrace {
     pub frames: Vec<usize>,
 }
-struct CallbackData {
-    trace: TaskTrace,
+struct CallbackData<'a> {
+    trace: &'a mut TaskTrace,
     above_leaf: bool,
     root_addr: *const c_void,
     leaf_addr: *const c_void,
@@ -52,13 +52,13 @@ extern "C" fn callback(
 }
 
 
-pub fn capture_trace(meta: &TraceMeta) -> TaskTrace {
+pub fn capture_trace(meta: &TraceMeta, task_trace: &mut TaskTrace) {
     let Some(root_addr) = meta.root_addr else {
-        return TaskTrace { frames: vec![] };
+        return
     };
 
     let mut data = CallbackData {
-        trace: TaskTrace { frames: vec![] },
+        trace: task_trace,
         above_leaf: false,
         root_addr,
         leaf_addr: meta.trace_leaf_addr,
@@ -71,7 +71,6 @@ pub fn capture_trace(meta: &TraceMeta) -> TaskTrace {
         );
     }
 
-    data.trace  // return the trace with collected frames
 }
 
 #[cfg(test)]
@@ -106,7 +105,7 @@ mod tests {
             trace_with(
                 || { let _ = fut.as_mut().poll(cx); },
                 |meta| {
-                    collected = capture_trace(meta);
+                    capture_trace(meta, &mut collected);
                 },
             );
             Poll::Ready(())
@@ -129,7 +128,7 @@ mod tests {
             trace_with(
                 || { let _ = fut.as_mut().poll(cx); },
                 |meta| {
-                    collected = capture_trace(meta);
+                    capture_trace(meta, &mut collected);
                 },
             );
             Poll::Ready(())
@@ -149,7 +148,7 @@ mod tests {
             trace_with(
                 || { let _ = fut.as_mut().poll(cx); },
                 |meta| {
-                    collected = capture_trace(meta);
+                    capture_trace(meta, &mut collected);
                 },
             );
             Poll::Ready(())
