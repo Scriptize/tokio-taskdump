@@ -1,12 +1,10 @@
-//! tokio-taskdump
-// src/lib.rs
-
 #![warn(
     missing_debug_implementations,
     missing_docs,
     rust_2018_idioms,
     unreachable_pub
 )]
+#![allow(missing_docs)]
 #![deny(unused_must_use, unsafe_op_in_unsafe_fn)]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 

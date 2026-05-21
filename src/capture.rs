@@ -56,6 +56,13 @@ impl Default for TaskTrace {
 }
 
 extern "C" fn callback(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_Reason_Code {
+    // SAFETY: This function is only ever called by `_Unwind_Backtrace`, which guarantees:
+    // 1. `ctx` is a valid, non-null pointer to an `_Unwind_Context` for the
+    //    current frame being unwound.
+    // 2. `arg` is the pointer we passed to `_Unwind_Backtrace`, which we know
+    //    is a valid pointer to our `Vec<usize>`.
+    // 3. This callback is invoked synchronously during the backtrace walk,
+    //    so the pointed-to data has not been dropped or moved.
     unsafe {
         let data = &mut *(arg as *mut Vec<usize>);
         let ip = _Unwind_GetIP(ctx);

@@ -1,4 +1,9 @@
-// src/unwind.rs — vendored from backtrace-rs
+// Copyright (c) 2014 Alex Crichton
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE> or
+// the MIT license <LICENSE-MIT>, at your option.
+//
+// Original source: https://github.com/rust-lang/backtrace-rs/blob/master/src/backtrace/libunwind.rs
 
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
