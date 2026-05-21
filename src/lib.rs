@@ -1,8 +1,8 @@
 //! tokio-taskdump
 // src/lib.rs
 
-mod unwind;
 mod capture;
+mod unwind;
 pub use capture::capture_trace;
 
 // /// A collected task dump — raw instruction pointers, symbolize later
@@ -10,13 +10,10 @@ pub use capture::capture_trace;
 //     pub frames: Vec<usize>,
 // }
 
-
 // /// A dump of multiple tasks
 // pub struct TaskDump {
 //     pub tasks: Vec<TaskTrace>,
 // }
-
-
 
 // pub fn trace_leaf(meta: &TraceMeta) -> TaskTrace {
 //     let mut frames: Vec<usize> = vec![];
@@ -80,9 +77,3 @@ pub use capture::capture_trace;
 
 //     TaskTrace { frames: data.frames }
 // }
-
-
-
-
-
-

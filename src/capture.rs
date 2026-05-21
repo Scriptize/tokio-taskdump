@@ -1,41 +1,29 @@
-use core::{ffi::c_void, task};
-use std::ptr;
-use std::future::Future;
-use std::task::Poll;
-use tokio::runtime::dump::{trace_with, TraceMeta};
+use core::ffi::c_void;
+use tokio::runtime::dump::TraceMeta;
 
 use crate::unwind::{
-    _Unwind_Backtrace,
-    _Unwind_Context,
-    _Unwind_FindEnclosingFunction,
-    _Unwind_GetIP,
-    _Unwind_Reason_Code::{self, _URC_FAILURE, _URC_NO_REASON},
+    _Unwind_Backtrace, _Unwind_Context, _Unwind_GetIP,
+    _Unwind_Reason_Code::{self, _URC_NO_REASON},
 };
 
 #[derive(Clone)]
 pub struct TaskTrace {
     pub frames: Vec<usize>,
     pub root_addr: *mut c_void,
-    pub leaf_addr: *mut c_void
+    pub leaf_addr: *mut c_void,
 }
 
-impl TaskTrace{
+impl TaskTrace {
     pub fn new() -> TaskTrace {
         Self {
             frames: vec![],
-            root_addr: 0 as *mut c_void,
-            leaf_addr: 0 as *mut c_void,
+            root_addr: std::ptr::null_mut::<c_void>(),
+            leaf_addr: std::ptr::null_mut::<c_void>(),
         }
     }
 }
 
-
-
-
-extern "C" fn callback(
-    ctx: *mut _Unwind_Context,
-    arg: *mut c_void,
-) -> _Unwind_Reason_Code {
+extern "C" fn callback(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_Reason_Code {
     unsafe {
         let data = &mut *(arg as *mut Vec<usize>);
         let ip = _Unwind_GetIP(ctx);
@@ -63,13 +51,12 @@ pub fn capture_trace(meta: &TraceMeta, trace: &mut TaskTrace) {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use tokio::runtime::dump::{trace_with, Trace, TraceMeta};
     use std::future::Future;
     use std::task::Poll;
+    use tokio::runtime::dump::{Trace, trace_with};
 
     // Create a chain of async functions to produce multiple frames
     async fn deep_c() {
@@ -94,17 +81,23 @@ mod tests {
 
         Trace::root(std::future::poll_fn(|cx| {
             trace_with(
-                || { let _ = fut.as_mut().poll(cx); },
+                || {
+                    let _ = fut.as_mut().poll(cx);
+                },
                 |meta| {
                     capture_trace(meta, &mut collected);
                 },
             );
             Poll::Ready(())
-        })).await;
+        }))
+        .await;
 
         // Should have multiple frames: deep_a, deep_b, deep_c, etc.
-        assert!(collected.frames.len() > 1,
-            "expected multiple frames, got {}", collected.frames.len());
+        assert!(
+            collected.frames.len() > 1,
+            "expected multiple frames, got {}",
+            collected.frames.len()
+        );
     }
 
     #[tokio::test]
@@ -117,16 +110,21 @@ mod tests {
 
         Trace::root(std::future::poll_fn(|cx| {
             trace_with(
-                || { let _ = fut.as_mut().poll(cx); },
+                || {
+                    let _ = fut.as_mut().poll(cx);
+                },
                 |meta| {
                     capture_trace(meta, &mut collected);
                 },
             );
             Poll::Ready(())
-        })).await;
+        }))
+        .await;
 
-        assert!(!collected.frames.is_empty(),
-            "should capture at least one frame");
+        assert!(
+            !collected.frames.is_empty(),
+            "should capture at least one frame"
+        );
     }
 
     #[tokio::test]
@@ -137,16 +135,21 @@ mod tests {
 
         Trace::root(std::future::poll_fn(|cx| {
             trace_with(
-                || { let _ = fut.as_mut().poll(cx); },
+                || {
+                    let _ = fut.as_mut().poll(cx);
+                },
                 |meta| {
                     capture_trace(meta, &mut collected);
                 },
             );
             Poll::Ready(())
-        })).await;
+        }))
+        .await;
 
         // No yield = trace_leaf never fires = no frames
-        assert!(collected.frames.is_empty(),
-            "no yield should mean no frames");
+        assert!(
+            collected.frames.is_empty(),
+            "no yield should mean no frames"
+        );
     }
 }
