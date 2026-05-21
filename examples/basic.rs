@@ -5,7 +5,7 @@
 use std::future::Future;
 use std::task::Poll;
 use tokio::runtime::dump::{Trace, trace_with};
-use tokio_taskdump::{capture_trace, TaskTrace};
+use tokio_taskdump::{TaskTrace, capture_trace};
 
 async fn work_c() {
     tokio::task::yield_now().await;

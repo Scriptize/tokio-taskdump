@@ -12,5 +12,5 @@
 
 mod capture;
 mod unwind;
-pub use capture::capture_trace;
 pub use capture::TaskTrace;
+pub use capture::capture_trace;

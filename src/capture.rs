@@ -21,7 +21,7 @@ use crate::unwind::{
 /// let trace = tokio_taskdump::TaskTrace::new();
 /// assert!(trace.frames.is_empty());
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TaskTrace {
     /// The instruction pointer addresses captured from the stack.
     pub frames: Vec<usize>,
@@ -46,6 +46,12 @@ impl TaskTrace {
             root_addr: std::ptr::null_mut::<c_void>(),
             leaf_addr: std::ptr::null_mut::<c_void>(),
         }
+    }
+}
+
+impl Default for TaskTrace {
+     fn default() -> Self {
+        Self::new()
     }
 }
 
