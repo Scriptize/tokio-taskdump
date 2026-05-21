@@ -6,14 +6,40 @@ use crate::unwind::{
     _Unwind_Reason_Code::{self, _URC_NO_REASON},
 };
 
+/// A captured stack trace from a Tokio task.
+///
+/// Contains the instruction pointer addresses for each frame in the trace,
+/// along with the root and leaf addresses that bound the task's execution.
+///
+/// # Examples
+///
+/// ```
+/// use tokio_taskdump::capture_trace;
+/// # use core::ffi::c_void;
+///
+/// // Create an empty trace to be filled by capture_trace
+/// let trace = tokio_taskdump::TaskTrace::new();
+/// assert!(trace.frames.is_empty());
+/// ```
 #[derive(Clone)]
 pub struct TaskTrace {
+    /// The instruction pointer addresses captured from the stack.
     pub frames: Vec<usize>,
+    /// The root address of the task (entry point).
     pub root_addr: *mut c_void,
+    /// The leaf address of the task (yield point).
     pub leaf_addr: *mut c_void,
 }
 
 impl TaskTrace {
+    /// Creates a new empty `TaskTrace` with no frames and null addresses.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let trace = tokio_taskdump::TaskTrace::new();
+    /// assert!(trace.frames.is_empty());
+    /// ```
     pub fn new() -> TaskTrace {
         Self {
             frames: vec![],
@@ -37,6 +63,40 @@ extern "C" fn callback(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_R
     }
 }
 
+/// Captures a stack trace from a Tokio task into the provided [`TaskTrace`].
+///
+/// This function is meant to be called from within a [`trace_with`] callback.
+/// It clears any existing frames in `trace`, sets the root and leaf addresses
+/// from `meta`, and performs a stack unwind to collect instruction pointers.
+///
+/// # Examples
+///
+/// ```
+/// use std::future::Future;
+/// use std::task::Poll;
+/// use tokio::runtime::dump::{Trace, trace_with};
+/// use tokio_taskdump::{capture_trace, TaskTrace};
+///
+/// # #[tokio::main]
+/// # async fn main() {
+/// let mut fut = std::pin::pin!(async {
+///     tokio::task::yield_now().await;
+/// });
+///
+/// let mut trace = TaskTrace::new();
+///
+/// Trace::root(std::future::poll_fn(|cx| {
+///     trace_with(
+///         || { let _ = fut.as_mut().poll(cx); },
+///         |meta| { capture_trace(meta, &mut trace); },
+///     );
+///     Poll::Ready(())
+/// }))
+/// .await;
+/// # }
+/// ```
+///
+/// [`trace_with`]: tokio::runtime::dump::trace_with
 pub fn capture_trace(meta: &TraceMeta, trace: &mut TaskTrace) {
     trace.frames.clear();
 
