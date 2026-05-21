@@ -50,7 +50,7 @@ impl TaskTrace {
 }
 
 impl Default for TaskTrace {
-     fn default() -> Self {
+    fn default() -> Self {
         Self::new()
     }
 }
