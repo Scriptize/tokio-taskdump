@@ -254,7 +254,7 @@ mod tests {
         .await;
 
         assert!(
-            traces.len() > 1,
+            traces.len() == 2,
             "select! should produce multiple traces, got {}",
             traces.len()
         );
