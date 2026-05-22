@@ -39,20 +39,22 @@ async fn main() {
         tokio::task::yield_now().await;
     });
 
-    let mut trace = TaskTrace::new();
+    let mut traces = Vec::new();
 
     Trace::root(std::future::poll_fn(|cx| {
         trace_with(
             || { let _ = fut.as_mut().poll(cx); },
-            |meta| { capture_trace(meta, &mut trace); },
+            |meta| { capture_trace(meta, &mut traces); },
         );
         Poll::Ready(())
     }))
     .await;
 
-    println!("captured {} frames", trace.frames.len());
-    for (i, addr) in trace.frames.iter().enumerate() {
-        println!("  frame {i}: {addr:#x}");
+    for trace in &traces {
+        println!("captured {} frames", trace.frames().len());
+        for (i, addr) in trace.frames().iter().enumerate() {
+            println!("  frame {i}: {addr:#x}");
+        }
     }
 }
 ```
@@ -80,7 +82,6 @@ task's call stack. You can then resolve them to symbols offline or at runtime.
 
 ## Requirements
 
-- Rust 1.95+
 - Tokio 1.52.3+ with the `taskdump` feature enabled
 - Linux (stack unwinding uses platform-specific APIs)
 
