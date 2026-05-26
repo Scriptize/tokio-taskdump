@@ -27,9 +27,9 @@ pub struct TaskTrace {
     /// The instruction pointer addresses captured from the stack.
     frames: Vec<usize>,
     /// The root address of the task (entry point).
-    root_addr: *mut c_void,
+    root_addr: *const c_void,
     /// The leaf address of the task (yield point).
-    leaf_addr: *mut c_void,
+    leaf_addr: *const c_void,
 }
 
 impl TaskTrace {
@@ -49,15 +49,18 @@ impl TaskTrace {
         }
     }
 
+    /// Returns the unfiltered instruction pointer addresses captured during the stack unwind.
     pub fn frames(&self) -> &[usize] {
         &self.frames
     }
 
-    pub fn root_addr(&self) -> *mut c_void {
+    /// Returns the root address of the task's stack.
+    pub fn root_addr(&self) -> *const c_void {
         self.root_addr
     }
 
-    pub fn leaf_addr(&self) -> *mut c_void {
+    /// Returns the leaf address of the task's stack.
+    pub fn leaf_addr(&self) -> *const c_void {
         self.leaf_addr
     }
 }
@@ -83,11 +86,11 @@ extern "C" fn callback(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_R
     }
 }
 
-/// Captures a stack trace from a Tokio task into the provided [`TaskTrace`].
+/// Captures a stack trace from a Tokio task and appends it to the provided `Vec`.
 ///
 /// This function is meant to be called from within a [`trace_with`] callback.
-/// It clears any existing frames in `trace`, sets the root and leaf addresses
-/// from `meta`, and performs a stack unwind to collect instruction pointers.
+/// It performs a stack unwind to collect instruction pointers, then pushes a
+/// new [`TaskTrace`] (with root and leaf addresses from `meta`) onto `trace`.
 ///
 /// # Examples
 ///

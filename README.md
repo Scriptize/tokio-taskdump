@@ -69,7 +69,10 @@ See the [`examples/`](examples/) directory for a more complete demonstration.
    the task yields, calls your callback with a [`TraceMeta`] containing the
    root and leaf addresses.
 3. [`capture_trace`] performs a stack unwind (via `_Unwind_Backtrace`) and
-   collects instruction pointer addresses into a [`TaskTrace`].
+   appends a new [`TaskTrace`] containing the collected instruction pointer
+   addresses to the provided `Vec<TaskTrace>`. If the task has multiple yield
+   points (e.g., branches of a `tokio::select!`), the callback is invoked once
+   per yield point, producing multiple traces in a single poll.
 
 The resulting frame addresses span from the unwind origin up through the
 task's call stack. You can then resolve them to symbols offline or at runtime.
